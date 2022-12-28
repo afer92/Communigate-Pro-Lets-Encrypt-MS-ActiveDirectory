@@ -46,3 +46,56 @@ curl -u postmaster:$postmaster_password -k 'https://127.0.0.1:9100/cli/' \
 
 ### Расписание
 Добавить в расписание обновление по мере подхода срока
+
+## English
+## Enable CLI usage on URLs
+
+Settings\Services\HTTP Access\CLI setting set clients.
+
+Specify 127.0.0.1 as the client address.
+
+### Enable PKI Services
+
+Settings\Domain<NameDomain>\Security\SSL\TLS set the PKI Services parameter to Enabled.
+
+### Script to install key, certificate and chain from LE to CGP
+
+```
+#!/bin/sh
+
+# key file
+le_key=<path to/le-key.pem
+# the certificate file
+le_crt=<path to/le-crt.pem
+# chain file 
+le_chain_crt=<path to/le-chain-crt.pem
+
+domain_name=<domain_name>
+postmaster_name=postmaster@${domain_name}
+postmaster_password=<password>
+
+# The key is ready
+private_secure_key=`openssl rsa -in ${le_key} 2> /dev/null | grep -v '\-\-' | tr -d '\n'`
+
+# Adding a Key
+curl -u postmaster:$postmaster_password -k 'https://127.0.0.1:9100/cli/' \
+--data-urlencode "command=updatedomainsettings ${domain_name} \
+{PrivateSecureKey=[${private_secure_key}];}"
+
+# Preparing a certificate
+secure_sertificate=`cat ${le_crt=} | grep -B1000 'BEGIN CERTIFICATE' | grep -B1000 'END ' | grep -v '\-\-' | tr -d '\n'`
+
+# Adding a certificate
+curl -u postmaster:$postmaster_password -k 'https://127.0.0.1:9100/cli/' \
+--data-urlencode "command=updatedomainsettings ${domain_name} \
+{SecureCertificate=[${secure_sertificate}];}"
+
+# Cooking the chain
+le_chain_crt=`grep -v '\-\-' ${le_chain_crt} | tr -d '\n'`
+# Adding a chain
+curl -u postmaster:$postmaster_password -k 'https://127.0.0.1:9100/cli/' \
+--data-urlencode "command=updatedomainsettings ${domain_name} \
+{CAChain=[${le_chain_crt}];}"
+```
+### Schedule
+Add an update to the schedule as the deadline approaches
